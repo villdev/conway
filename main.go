@@ -13,40 +13,37 @@ import (
 type Cells = [20][40]bool
 
 func main() {
-	s := setupScreen()
-
+	screen := newGameScreen()
 	cells := initCells()
 	generation := 1
+	frameDelay := 100 * time.Millisecond
 
-	renderUI(s, cells, generation)
+	renderUI(screen, cells, generation)
 
-	quit := func() {
-		s.Fini()
-		os.Exit(0)
-	}
 	for {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(frameDelay)
 		cells = getNextGeneration(cells)
 		generation++
 
-		renderUI(s, cells, generation)
+		renderUI(screen, cells, generation)
 
-		if s.HasPendingEvent() {
-			ev := s.PollEvent()
+		if screen.HasPendingEvent() {
+			event := screen.PollEvent()
 
-			switch ev := ev.(type) {
+			switch event := event.(type) {
 			case *tcell.EventResize:
-				s.Sync()
+				screen.Sync()
 			case *tcell.EventKey:
-				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-					quit()
+				if event.Key() == tcell.KeyEscape || event.Key() == tcell.KeyCtrlC {
+					screen.Fini()
+					os.Exit(0)
 				}
 			}
 		}
 	}
 }
 
-func setupScreen() tcell.Screen {
+func newGameScreen() tcell.Screen {
 	s, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatalf("%+v", err)
@@ -118,7 +115,7 @@ func renderControls(cells Cells, offsetY int, s tcell.Screen) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
 	infoX := 25
 	infoY := (len(cells)+1)*(offsetY+1) + 2
-	infoText := "Press ESC to exit."
+	infoText := "Press ESC to exit..."
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
@@ -141,7 +138,7 @@ func getNextGeneration(cells Cells) Cells {
 	var newCells Cells
 	for i := 0; i < len(cells); i++ {
 		for j := 0; j < len(cells[i]); j++ {
-			neighbourCount := calculateNeighbours(i, j, cells)
+			neighbourCount := countNeighbours(i, j, cells)
 			alive := cells[i][j]
 			if alive && (neighbourCount == 2 || neighbourCount == 3) {
 				newCells[i][j] = true
@@ -155,7 +152,7 @@ func getNextGeneration(cells Cells) Cells {
 	return newCells
 }
 
-func calculateNeighbours(currentRow, currentCol int, cells Cells) int {
+func countNeighbours(currentRow, currentCol int, cells Cells) int {
 	count := 0
 	for i := bigger(0, currentRow-1); i <= smaller(currentRow+1, len(cells)-1); i++ {
 		for j := bigger(0, currentCol-1); j <= smaller(currentCol+1, len(cells[i])-1); j++ {
@@ -168,16 +165,16 @@ func calculateNeighbours(currentRow, currentCol int, cells Cells) int {
 	return count
 }
 
-func bigger(a, b int) int {
-	if a > b {
-		return a
+func bigger(lowest, b int) int {
+	if lowest > b {
+		return lowest
 	}
 	return b
 }
 
-func smaller(a, b int) int {
-	if a > b {
-		return b
+func smaller(a, highest int) int {
+	if a > highest {
+		return highest
 	}
 	return a
 }
