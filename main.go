@@ -22,8 +22,15 @@ const (
 
 const (
 	Random int = iota
-	Glider
 	Block
+	Beehive
+	Blinker
+	Toad
+	Glider
+	Spaceship
+	Spaceship2
+	Diehard
+	Acorn
 )
 
 func main() {
@@ -33,8 +40,15 @@ func main() {
 	patternIndex := 0
 	patterns := []string{
 		"Random",
-		"Glider",
 		"Block",
+		"Beehive",
+		"Blinker",
+		"Toad",
+		"Glider",
+		"Spaceship",
+		"Spaceship2",
+		"Diehard",
+		"Acorn",
 	}
 	screen := newGameScreen()
 	generation := 0
@@ -227,17 +241,72 @@ func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, genera
 func initCells(patternIndex int) Cells {
 	var cells Cells
 	switch patternIndex {
+	case Block:
+		cells[1][1] = true
+		cells[1][2] = true
+		cells[2][1] = true
+		cells[2][2] = true
+	case Beehive:
+		cells[1][2] = true
+		cells[1][3] = true
+		cells[2][1] = true
+		cells[2][4] = true
+		cells[3][2] = true
+		cells[3][3] = true
+	case Blinker:
+		cells[10][20] = true
+		cells[10][21] = true
+		cells[10][22] = true
+	case Toad:
+		cells[10][20] = true
+		cells[10][21] = true
+		cells[10][22] = true
+		cells[11][19] = true
+		cells[11][20] = true
+		cells[11][21] = true
 	case Glider:
 		cells[1][2] = true
 		cells[2][3] = true
 		cells[3][1] = true
 		cells[3][2] = true
 		cells[3][3] = true
-	case Block:
-		cells[1][1] = true
+	case Spaceship:
 		cells[1][2] = true
+		cells[1][3] = true
+		cells[1][4] = true
+		cells[1][5] = true
 		cells[2][1] = true
-		cells[2][2] = true
+		cells[2][5] = true
+		cells[3][5] = true
+		cells[4][1] = true
+		cells[4][4] = true
+	case Spaceship2:
+		cells[10][1] = true
+		cells[10][2] = true
+		cells[10][3] = true
+		cells[10][4] = true
+		cells[10][5] = true
+		cells[11][0] = true
+		cells[11][5] = true
+		cells[12][5] = true
+		cells[13][4] = true
+		cells[13][0] = true
+	case Diehard:
+		cells[10][25] = true
+		cells[11][19] = true
+		cells[11][20] = true
+		cells[12][20] = true
+		cells[12][24] = true
+		cells[12][25] = true
+		cells[12][26] = true
+	case Acorn:
+		cells[10][20] = true
+		cells[11][22] = true
+		cells[12][19] = true
+		cells[12][20] = true
+		cells[12][23] = true
+		cells[12][24] = true
+		cells[12][25] = true
 	default:
 		for i := 0; i < len(cells); i++ {
 			for j := 0; j < len(cells[i]); j++ {
