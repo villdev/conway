@@ -23,12 +23,13 @@ const (
 func main() {
 	var cells Cells
 	currentState := Start
+	showGrid := true
 	screen := newGameScreen()
 	generation := 0
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
-	renderUI(screen, cells, currentState, generation)
+	renderUI(screen, cells, currentState, generation, showGrid)
 
 	for {
 		switch currentState {
@@ -48,10 +49,10 @@ func main() {
 			time.Sleep(idleFrameDelay)
 		}
 
-		renderUI(screen, cells, currentState, generation)
+		renderUI(screen, cells, currentState, generation, showGrid)
 
 		if screen.HasPendingEvent() {
-			handleKeyInputs(screen, &currentState)
+			handleKeyInputs(screen, &currentState, &showGrid)
 		}
 	}
 }
@@ -72,19 +73,19 @@ func newGameScreen() tcell.Screen {
 	return s
 }
 
-func renderUI(s tcell.Screen, cells Cells, currentState State, generation int) {
+func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool) {
 	s.Clear()
 
 	offsetX, offsetY := 1, 1
 
-	liveCount := renderCellGrid(cells, offsetX, offsetY, s)
+	liveCount := renderCellGrid(cells, offsetX, offsetY, s, showGrid)
 	renderState(cells, offsetY, generation, liveCount, s, currentState)
-	renderControls(cells, offsetY, s, currentState)
+	renderControls(cells, offsetY, s, currentState, showGrid)
 
 	s.Show()
 }
 
-func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen) int {
+func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid bool) int {
 	liveCount := 0
 	blockStyle := tcell.StyleDefault.Background(tcell.ColorDarkViolet).Foreground(tcell.ColorDarkViolet)
 	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorGrey)
@@ -101,12 +102,14 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen) int {
 				}
 			}
 
-			if j < len(cells[0]) && i <= len(cells) {
-				s.SetContent(x+offsetX, y, tcell.RuneVLine, nil, gridStyle)
-			}
+			if showGrid {
+				if j < len(cells[0]) && i <= len(cells) {
+					s.SetContent(x+offsetX, y, tcell.RuneVLine, nil, gridStyle)
+				}
 
-			if i < len(cells) && j <= len(cells[0]) {
-				s.SetContent(x, y+offsetY, tcell.RuneHLine, nil, gridStyle)
+				if i < len(cells) && j <= len(cells[0]) {
+					s.SetContent(x, y+offsetY, tcell.RuneHLine, nil, gridStyle)
+				}
 			}
 		}
 	}
@@ -124,23 +127,29 @@ func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen
 	}
 }
 
-func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State) {
+func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State, showGrid bool) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
-	infoX := 25
+	infoX := 15
 	infoY := (len(cells)+1)*(offsetY+1) + 2
 	var infoText string
 	if currentState == Running {
-		infoText = "Space -> Pause | Press ESC to exit..."
+		infoText = "Space -> Pause"
 	} else {
-		infoText = "Space -> Play | Press ESC to exit..."
+		infoText = "Space -> Play"
 	}
+	if showGrid {
+		infoText += " | G -> Hide Grid"
+	} else {
+		infoText += " | G -> Show Grid"
+	}
+	infoText += " | Press ESC to exit.."
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
 	}
 }
 
-func handleKeyInputs(s tcell.Screen, currentState *State) {
+func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool) {
 	event := s.PollEvent()
 
 	switch event := event.(type) {
@@ -159,6 +168,8 @@ func handleKeyInputs(s tcell.Screen, currentState *State) {
 				case Running:
 					*currentState = Paused
 				}
+			} else if event.Rune() == 'G' || event.Rune() == 'g' {
+				*showGrid = !*showGrid
 			}
 		}
 	}
