@@ -12,33 +12,46 @@ import (
 
 type Cells = [20][40]bool
 
-func main() {
-	screen := newGameScreen()
-	cells := initCells()
-	generation := 1
-	frameDelay := 100 * time.Millisecond
+type State string
 
-	renderUI(screen, cells, generation)
+const (
+	Start   State = "Start"
+	Paused  State = "Paused"
+	Running State = "Running"
+)
+
+func main() {
+	var cells Cells
+	currentState := Start
+	screen := newGameScreen()
+	generation := 0
+	frameDelay := 100 * time.Millisecond
+	idleFrameDelay := 200 * time.Millisecond
+
+	renderUI(screen, cells, currentState, generation)
 
 	for {
-		time.Sleep(frameDelay)
-		cells = getNextGeneration(cells)
-		generation++
+		switch currentState {
+		case Start:
+			time.Sleep(idleFrameDelay)
+		case Running:
+			time.Sleep(frameDelay)
+			if generation == 0 {
+				cells = initCells()
+			} else {
+				cells = getNextGeneration(cells)
+			}
+			generation++
+		case Paused:
+			time.Sleep(idleFrameDelay)
+		default:
+			time.Sleep(idleFrameDelay)
+		}
 
-		renderUI(screen, cells, generation)
+		renderUI(screen, cells, currentState, generation)
 
 		if screen.HasPendingEvent() {
-			event := screen.PollEvent()
-
-			switch event := event.(type) {
-			case *tcell.EventResize:
-				screen.Sync()
-			case *tcell.EventKey:
-				if event.Key() == tcell.KeyEscape || event.Key() == tcell.KeyCtrlC {
-					screen.Fini()
-					os.Exit(0)
-				}
-			}
+			handleKeyInputs(screen, &currentState)
 		}
 	}
 }
@@ -59,14 +72,14 @@ func newGameScreen() tcell.Screen {
 	return s
 }
 
-func renderUI(s tcell.Screen, cells Cells, generation int) {
+func renderUI(s tcell.Screen, cells Cells, currentState State, generation int) {
 	s.Clear()
 
 	offsetX, offsetY := 1, 1
 
 	liveCount := renderCellGrid(cells, offsetX, offsetY, s)
-	renderCounts(cells, offsetY, generation, liveCount, s)
-	renderControls(cells, offsetY, s)
+	renderState(cells, offsetY, generation, liveCount, s, currentState)
+	renderControls(cells, offsetY, s, currentState)
 
 	s.Show()
 }
@@ -100,25 +113,54 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen) int {
 	return liveCount
 }
 
-func renderCounts(cells Cells, offsetY, generation, liveCount int, s tcell.Screen) {
+func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen, currentState State) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
 	infoX := 20
 	infoY := (len(cells) + 1) * (offsetY + 1)
-	infoText := fmt.Sprintf("Generation: %d, Live Cells: %d", generation, liveCount)
+	infoText := fmt.Sprintf("Generation: %d, Live Cells: %d | %s", generation, liveCount, currentState)
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
 	}
 }
 
-func renderControls(cells Cells, offsetY int, s tcell.Screen) {
+func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
 	infoX := 25
 	infoY := (len(cells)+1)*(offsetY+1) + 2
-	infoText := "Press ESC to exit..."
+	var infoText string
+	if currentState == Running {
+		infoText = "Space -> Pause | Press ESC to exit..."
+	} else {
+		infoText = "Space -> Play | Press ESC to exit..."
+	}
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
+	}
+}
+
+func handleKeyInputs(s tcell.Screen, currentState *State) {
+	event := s.PollEvent()
+
+	switch event := event.(type) {
+	case *tcell.EventResize:
+		s.Sync()
+	case *tcell.EventKey:
+		switch event.Key() {
+		case tcell.KeyEscape, tcell.KeyCtrlC:
+			s.Fini()
+			os.Exit(0)
+		case tcell.KeyRune:
+			if event.Rune() == ' ' {
+				switch *currentState {
+				case Start, Paused:
+					*currentState = Running
+				case Running:
+					*currentState = Paused
+				}
+			}
+		}
 	}
 }
 
