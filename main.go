@@ -35,6 +35,8 @@ func main() {
 		switch currentState {
 		case Start:
 			time.Sleep(idleFrameDelay)
+			var defaultCells Cells
+			cells = defaultCells
 		case Running:
 			time.Sleep(frameDelay)
 			if generation == 0 {
@@ -52,7 +54,7 @@ func main() {
 		renderUI(screen, cells, currentState, generation, showGrid)
 
 		if screen.HasPendingEvent() {
-			handleKeyInputs(screen, &currentState, &showGrid)
+			handleKeyInputs(screen, &currentState, &showGrid, &generation)
 		}
 	}
 }
@@ -129,7 +131,7 @@ func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen
 
 func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State, showGrid bool) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
-	infoX := 15
+	infoX := 18
 	infoY := (len(cells)+1)*(offsetY+1) + 2
 	var infoText string
 	if currentState == Running {
@@ -142,14 +144,22 @@ func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State
 	} else {
 		infoText += " | G -> Show Grid"
 	}
-	infoText += " | Press ESC to exit.."
+	infoText += " | R -> Reset"
+	for _, rune := range infoText {
+		s.SetContent(infoX, infoY, rune, nil, infoStyle)
+		infoX++
+	}
+
+	infoText = "Press ESC to exit..."
+	infoX = 30
+	infoY = (len(cells)+1)*(offsetY+1) + 4
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
 	}
 }
 
-func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool) {
+func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, generation *int) {
 	event := s.PollEvent()
 
 	switch event := event.(type) {
@@ -170,6 +180,9 @@ func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool) {
 				}
 			} else if event.Rune() == 'G' || event.Rune() == 'g' {
 				*showGrid = !*showGrid
+			} else if event.Rune() == 'R' || event.Rune() == 'r' {
+				*currentState = Start
+				*generation = 0
 			}
 		}
 	}
