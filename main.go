@@ -20,16 +20,28 @@ const (
 	Running State = "Running"
 )
 
+const (
+	Random int = iota
+	Glider
+	Block
+)
+
 func main() {
 	var cells Cells
 	currentState := Start
 	showGrid := true
+	patternIndex := 0
+	patterns := []string{
+		"Random",
+		"Glider",
+		"Block",
+	}
 	screen := newGameScreen()
 	generation := 0
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
-	renderUI(screen, cells, currentState, generation, showGrid)
+	renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
 
 	for {
 		switch currentState {
@@ -40,7 +52,7 @@ func main() {
 		case Running:
 			time.Sleep(frameDelay)
 			if generation == 0 {
-				cells = initCells()
+				cells = initCells(patternIndex)
 			} else {
 				cells = getNextGeneration(cells)
 			}
@@ -51,10 +63,10 @@ func main() {
 			time.Sleep(idleFrameDelay)
 		}
 
-		renderUI(screen, cells, currentState, generation, showGrid)
+		renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
 
 		if screen.HasPendingEvent() {
-			handleKeyInputs(screen, &currentState, &showGrid, &generation)
+			handleKeyInputs(screen, &currentState, &showGrid, &generation, patterns, &patternIndex)
 		}
 	}
 }
@@ -75,13 +87,13 @@ func newGameScreen() tcell.Screen {
 	return s
 }
 
-func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool) {
+func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, pattern string) {
 	s.Clear()
 
 	offsetX, offsetY := 1, 1
 
 	liveCount := renderCellGrid(cells, offsetX, offsetY, s, showGrid)
-	renderState(cells, offsetY, generation, liveCount, s, currentState)
+	renderState(cells, offsetY, generation, liveCount, s, currentState, pattern)
 	renderControls(cells, offsetY, s, currentState, showGrid)
 
 	s.Show()
@@ -118,11 +130,17 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid 
 	return liveCount
 }
 
-func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen, currentState State) {
+func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen, currentState State, pattern string) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
-	infoX := 20
+	infoX := 14
 	infoY := (len(cells) + 1) * (offsetY + 1)
-	infoText := fmt.Sprintf("Generation: %d, Live Cells: %d | %s", generation, liveCount, currentState)
+	var infoText string
+	if currentState == Start {
+		infoText = fmt.Sprintf("Pattern: < %s >, ", pattern)
+	} else {
+		infoText = fmt.Sprintf("Pattern: %s, ", pattern)
+	}
+	infoText += fmt.Sprintf("Generation: %d, Live Cells: %d | %s", generation, liveCount, currentState)
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
@@ -131,20 +149,25 @@ func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen
 
 func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State, showGrid bool) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
-	infoX := 18
-	infoY := (len(cells)+1)*(offsetY+1) + 2
 	var infoText string
-	if currentState == Running {
-		infoText = "Space -> Pause"
-	} else {
-		infoText = "Space -> Play"
+	infoX := 12
+	infoY := (len(cells)+1)*(offsetY+1) + 2
+	switch currentState {
+	case Start:
+		infoText = "Right/Left -> Change Pattern | Space -> Play"
+	case Running:
+		infoX = 18
+		infoText = "Space -> Pause | R -> Reset"
+	case Paused:
+		infoX = 19
+		infoText = "Space -> Play | R -> Reset"
 	}
+
 	if showGrid {
 		infoText += " | G -> Hide Grid"
 	} else {
 		infoText += " | G -> Show Grid"
 	}
-	infoText += " | R -> Reset"
 	for _, rune := range infoText {
 		s.SetContent(infoX, infoY, rune, nil, infoStyle)
 		infoX++
@@ -159,7 +182,7 @@ func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State
 	}
 }
 
-func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, generation *int) {
+func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, generation *int, patterns []string, patternIndex *int) {
 	event := s.PollEvent()
 
 	switch event := event.(type) {
@@ -183,20 +206,48 @@ func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, genera
 			} else if event.Rune() == 'R' || event.Rune() == 'r' {
 				*currentState = Start
 				*generation = 0
+				*patternIndex = 0
+			}
+		case tcell.KeyLeft:
+			if *currentState == Start {
+				if *patternIndex == 0 {
+					*patternIndex = len(patterns) - 1
+				} else {
+					*patternIndex--
+				}
+			}
+		case tcell.KeyRight:
+			if *currentState == Start {
+				*patternIndex = (*patternIndex + 1) % len(patterns)
 			}
 		}
 	}
 }
 
-func initCells() Cells {
+func initCells(patternIndex int) Cells {
 	var cells Cells
-	for i := 0; i < len(cells); i++ {
-		for j := 0; j < len(cells[i]); j++ {
-			if rand.Intn(10) == 0 {
-				cells[i][j] = true
+	switch patternIndex {
+	case Glider:
+		cells[1][2] = true
+		cells[2][3] = true
+		cells[3][1] = true
+		cells[3][2] = true
+		cells[3][3] = true
+	case Block:
+		cells[1][1] = true
+		cells[1][2] = true
+		cells[2][1] = true
+		cells[2][2] = true
+	default:
+		for i := 0; i < len(cells); i++ {
+			for j := 0; j < len(cells[i]); j++ {
+				if rand.Intn(10) == 0 {
+					cells[i][j] = true
+				}
 			}
 		}
 	}
+
 	return cells
 }
 
