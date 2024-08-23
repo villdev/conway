@@ -43,6 +43,7 @@ func main() {
 	var cells Cells
 	currentState := Start
 	showGrid := true
+	previousShowGrid := !showGrid
 	patternIndex := 0
 	patterns := []string{
 		"Random",
@@ -61,7 +62,7 @@ func main() {
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
-	renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
+	renderUI(screen, cells, currentState, generation, showGrid, previousShowGrid, patterns[patternIndex])
 	renderStaticUI(screen, cells)
 
 	for {
@@ -83,7 +84,8 @@ func main() {
 			time.Sleep(idleFrameDelay)
 		}
 
-		renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
+		renderUI(screen, cells, currentState, generation, showGrid, previousShowGrid, patterns[patternIndex])
+		previousShowGrid = showGrid
 
 		if screen.HasPendingEvent() {
 			handleKeyInputs(screen, &currentState, &showGrid, &generation, patterns, &patternIndex)
@@ -107,18 +109,19 @@ func newGameScreen() tcell.Screen {
 	return s
 }
 
-func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, pattern string) {
-	liveCount := renderCellGrid(cells, s, showGrid)
+func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, previousShowGrid bool, pattern string) {
+	liveCount := renderCellGrid(cells, s, showGrid, previousShowGrid)
 	renderState(cells, generation, liveCount, s, currentState, pattern)
 	renderControls(cells, s, currentState, showGrid)
 
 	s.Show()
 }
 
-func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool) int {
+func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid bool) int {
 	liveCount := 0
 	blockStyle := tcell.StyleDefault.Background(tcell.ColorDarkViolet).Foreground(tcell.ColorDarkViolet)
 	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorGrey)
+	emptyStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	for i := 0; i <= len(cells); i++ {
 		for j := 0; j <= len(cells[0]); j++ {
 			x, y := j*2, i*2
@@ -134,13 +137,21 @@ func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool) int {
 				}
 			}
 
-			if showGrid {
-				if j < len(cells[0]) && i <= len(cells) {
-					s.SetContent(x+1, y, tcell.RuneVLine, nil, gridStyle)
-				}
-
-				if i < len(cells) && j <= len(cells[0]) {
-					s.SetContent(x, y+1, tcell.RuneHLine, nil, gridStyle)
+			if showGrid != previousShowGrid {
+				if showGrid {
+					if j < len(cells[0]) && i <= len(cells) {
+						s.SetContent(x+1, y, tcell.RuneVLine, nil, gridStyle)
+					}
+					if i < len(cells) && j <= len(cells[0]) {
+						s.SetContent(x, y+1, tcell.RuneHLine, nil, gridStyle)
+					}
+				} else {
+					if j < len(cells[0]) && i <= len(cells) {
+						s.SetContent(x+1, y, ' ', nil, emptyStyle)
+					}
+					if i < len(cells) && j <= len(cells[0]) {
+						s.SetContent(x, y+1, ' ', nil, emptyStyle)
+					}
 				}
 			}
 		}
