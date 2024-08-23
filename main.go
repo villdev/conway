@@ -62,8 +62,16 @@ func main() {
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
-	renderUI(screen, cells, currentState, generation, showGrid, previousShowGrid, patterns[patternIndex])
-	renderStaticUI(screen, cells)
+	resetUI := func() {
+		screen.Clear()
+		for i := range cells {
+			for j := range cells[i] {
+				cells[i][j].updated = true
+			}
+		}
+		previousShowGrid = !showGrid
+		renderUI(screen, cells, currentState, generation, showGrid, previousShowGrid, patterns[patternIndex])
+	}
 
 	for {
 		switch currentState {
@@ -88,7 +96,7 @@ func main() {
 		previousShowGrid = showGrid
 
 		if screen.HasPendingEvent() {
-			handleKeyInputs(screen, &currentState, &showGrid, &generation, patterns, &patternIndex)
+			handleKeyInputs(screen, &currentState, &showGrid, &generation, patterns, &patternIndex, resetUI)
 		}
 	}
 }
@@ -110,21 +118,24 @@ func newGameScreen() tcell.Screen {
 }
 
 func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, previousShowGrid bool, pattern string) {
-	liveCount := renderCellGrid(cells, s, showGrid, previousShowGrid)
-	renderState(cells, generation, liveCount, s, currentState, pattern)
-	renderControls(cells, s, currentState, showGrid)
+	_, gridHeight, startX, startY := getScreenDimensions(s, cells)
 
+	liveCount := renderCellGrid(cells, s, showGrid, previousShowGrid, startX, startY)
+	renderState(cells, generation, liveCount, s, currentState, pattern, startX, startY+gridHeight+1)
+	renderControls(cells, s, currentState, showGrid, startX, startY+gridHeight+3)
+	renderStaticUI(s, cells, startX, startY+gridHeight+5)
 	s.Show()
 }
 
-func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid bool) int {
+func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid bool, startX int, startY int) int {
 	liveCount := 0
 	blockStyle := tcell.StyleDefault.Background(tcell.ColorDarkViolet).Foreground(tcell.ColorDarkViolet)
 	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorGrey)
 	emptyStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+
 	for i := 0; i <= len(cells); i++ {
 		for j := 0; j <= len(cells[0]); j++ {
-			x, y := j*2, i*2
+			x, y := startX+j*2, startY+i*2
 
 			if i < len(cells) && j < len(cells[0]) {
 				if cells[i][j].updated {
@@ -132,26 +143,29 @@ func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid
 						liveCount++
 						s.SetContent(x, y, '█', nil, blockStyle)
 					} else {
-						s.SetContent(x, y, ' ', nil, gridStyle)
+						s.SetContent(x, y, ' ', nil, emptyStyle)
 					}
 				}
 			}
 
 			if showGrid != previousShowGrid {
+				gridChar := ' '
+				style := emptyStyle
 				if showGrid {
-					if j < len(cells[0]) && i <= len(cells) {
-						s.SetContent(x+1, y, tcell.RuneVLine, nil, gridStyle)
+					style = gridStyle
+				}
+
+				if j < len(cells[0]) && i <= len(cells) {
+					if showGrid {
+						gridChar = tcell.RuneVLine
 					}
-					if i < len(cells) && j <= len(cells[0]) {
-						s.SetContent(x, y+1, tcell.RuneHLine, nil, gridStyle)
+					s.SetContent(x+1, y, gridChar, nil, style)
+				}
+				if i < len(cells) && j <= len(cells[0]) {
+					if showGrid {
+						gridChar = tcell.RuneHLine
 					}
-				} else {
-					if j < len(cells[0]) && i <= len(cells) {
-						s.SetContent(x+1, y, ' ', nil, emptyStyle)
-					}
-					if i < len(cells) && j <= len(cells[0]) {
-						s.SetContent(x, y+1, ' ', nil, emptyStyle)
-					}
+					s.SetContent(x, y+1, gridChar, nil, style)
 				}
 			}
 		}
@@ -159,8 +173,7 @@ func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid
 	return liveCount
 }
 
-func renderState(cells Cells, generation, liveCount int, s tcell.Screen, currentState State, pattern string) {
-	infoY := (len(cells) + 1) * 2
+func renderState(cells Cells, generation, liveCount int, s tcell.Screen, currentState State, pattern string, startX int, startY int) {
 	var infoText string
 	if currentState == Start {
 		infoText = fmt.Sprintf("Pattern: < %s >, ", pattern)
@@ -170,12 +183,11 @@ func renderState(cells Cells, generation, liveCount int, s tcell.Screen, current
 	infoText += fmt.Sprintf("Generation: %d, Live Cells: %d | %s", generation, liveCount, currentState)
 
 	maxLen := len(cells[0]) * 2
-	drawString(infoText, infoY, maxLen, s)
+	drawString(infoText, startY, startX, maxLen, s)
 }
 
-func renderControls(cells Cells, s tcell.Screen, currentState State, showGrid bool) {
+func renderControls(cells Cells, s tcell.Screen, currentState State, showGrid bool, startX int, startY int) {
 	var infoText string
-	infoY := (len(cells)+1)*2 + 2
 	switch currentState {
 	case Start:
 		infoText = "Right/Left -> Change Pattern | Space -> Play"
@@ -192,16 +204,16 @@ func renderControls(cells Cells, s tcell.Screen, currentState State, showGrid bo
 	}
 
 	maxLen := len(cells[0]) * 2
-	drawString(infoText, infoY, maxLen, s)
+	drawString(infoText, startY, startX, maxLen, s)
 }
 
-func renderStaticUI(s tcell.Screen, cells Cells) {
+func renderStaticUI(s tcell.Screen, cells Cells, startX int, startY int) {
 	infoText := "Press ESC to exit..."
-	infoY := (len(cells)+1)*2 + 4
-	drawString(infoText, infoY, len(cells[0])*2, s)
+	maxLen := len(cells[0]) * 2
+	drawString(infoText, startY, startX, maxLen, s)
 }
 
-func drawString(text string, row int, maxLen int, s tcell.Screen) {
+func drawString(text string, row int, startX int, maxLen int, s tcell.Screen) {
 	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
 	if len(text) < maxLen {
 		padding := (maxLen - len(text)) / 2
@@ -209,16 +221,28 @@ func drawString(text string, row int, maxLen int, s tcell.Screen) {
 	}
 
 	for x, rune := range text {
-		s.SetContent(x, row, rune, nil, infoStyle)
+		s.SetContent(startX+x, row, rune, nil, infoStyle)
 	}
 }
 
-func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, generation *int, patterns []string, patternIndex *int) {
+func getScreenDimensions(s tcell.Screen, cells Cells) (int, int, int, int) {
+	width, height := s.Size()
+
+	gridWidth := len(cells[0])*2 + 1
+	gridHeight := len(cells)*2 + 1
+	startX := (width - gridWidth) / 2
+	startY := (height - gridHeight - 3) / 2
+
+	return gridWidth, gridHeight, startX, startY
+}
+
+func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, generation *int, patterns []string, patternIndex *int, resetUI func()) {
 	event := s.PollEvent()
 
 	switch event := event.(type) {
 	case *tcell.EventResize:
 		s.Sync()
+		resetUI()
 	case *tcell.EventKey:
 		switch event.Key() {
 		case tcell.KeyEscape, tcell.KeyCtrlC:
