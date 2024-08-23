@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -60,8 +61,8 @@ func main() {
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
-	screen.Clear()
 	renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
+	renderStaticUI(screen, cells)
 
 	for {
 		switch currentState {
@@ -107,22 +108,20 @@ func newGameScreen() tcell.Screen {
 }
 
 func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, pattern string) {
-	offsetX, offsetY := 1, 1
-
-	liveCount := renderCellGrid(cells, offsetX, offsetY, s, showGrid)
-	renderState(cells, offsetY, generation, liveCount, s, currentState, pattern)
-	renderControls(cells, offsetY, s, currentState, showGrid)
+	liveCount := renderCellGrid(cells, s, showGrid)
+	renderState(cells, generation, liveCount, s, currentState, pattern)
+	renderControls(cells, s, currentState, showGrid)
 
 	s.Show()
 }
 
-func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid bool) int {
+func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool) int {
 	liveCount := 0
 	blockStyle := tcell.StyleDefault.Background(tcell.ColorDarkViolet).Foreground(tcell.ColorDarkViolet)
 	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorGrey)
 	for i := 0; i <= len(cells); i++ {
 		for j := 0; j <= len(cells[0]); j++ {
-			x, y := j*(offsetX+1), i*(offsetY+1)
+			x, y := j*2, i*2
 
 			if i < len(cells) && j < len(cells[0]) {
 				if cells[i][j].updated {
@@ -137,11 +136,11 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid 
 
 			if showGrid {
 				if j < len(cells[0]) && i <= len(cells) {
-					s.SetContent(x+offsetX, y, tcell.RuneVLine, nil, gridStyle)
+					s.SetContent(x+1, y, tcell.RuneVLine, nil, gridStyle)
 				}
 
 				if i < len(cells) && j <= len(cells[0]) {
-					s.SetContent(x, y+offsetY, tcell.RuneHLine, nil, gridStyle)
+					s.SetContent(x, y+1, tcell.RuneHLine, nil, gridStyle)
 				}
 			}
 		}
@@ -149,10 +148,8 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid 
 	return liveCount
 }
 
-func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen, currentState State, pattern string) {
-	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
-	infoX := 14
-	infoY := (len(cells) + 1) * (offsetY + 1)
+func renderState(cells Cells, generation, liveCount int, s tcell.Screen, currentState State, pattern string) {
+	infoY := (len(cells) + 1) * 2
 	var infoText string
 	if currentState == Start {
 		infoText = fmt.Sprintf("Pattern: < %s >, ", pattern)
@@ -160,25 +157,20 @@ func renderState(cells Cells, offsetY, generation, liveCount int, s tcell.Screen
 		infoText = fmt.Sprintf("Pattern: %s, ", pattern)
 	}
 	infoText += fmt.Sprintf("Generation: %d, Live Cells: %d | %s", generation, liveCount, currentState)
-	for _, rune := range infoText {
-		s.SetContent(infoX, infoY, rune, nil, infoStyle)
-		infoX++
-	}
+
+	maxLen := len(cells[0]) * 2
+	drawString(infoText, infoY, maxLen, s)
 }
 
-func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State, showGrid bool) {
-	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
+func renderControls(cells Cells, s tcell.Screen, currentState State, showGrid bool) {
 	var infoText string
-	infoX := 12
-	infoY := (len(cells)+1)*(offsetY+1) + 2
+	infoY := (len(cells)+1)*2 + 2
 	switch currentState {
 	case Start:
 		infoText = "Right/Left -> Change Pattern | Space -> Play"
 	case Running:
-		infoX = 18
 		infoText = "Space -> Pause | R -> Reset"
 	case Paused:
-		infoX = 19
 		infoText = "Space -> Play | R -> Reset"
 	}
 
@@ -187,17 +179,26 @@ func renderControls(cells Cells, offsetY int, s tcell.Screen, currentState State
 	} else {
 		infoText += " | G -> Show Grid"
 	}
-	for _, rune := range infoText {
-		s.SetContent(infoX, infoY, rune, nil, infoStyle)
-		infoX++
+
+	maxLen := len(cells[0]) * 2
+	drawString(infoText, infoY, maxLen, s)
+}
+
+func renderStaticUI(s tcell.Screen, cells Cells) {
+	infoText := "Press ESC to exit..."
+	infoY := (len(cells)+1)*2 + 4
+	drawString(infoText, infoY, len(cells[0])*2, s)
+}
+
+func drawString(text string, row int, maxLen int, s tcell.Screen) {
+	infoStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorWhite)
+	if len(text) < maxLen {
+		padding := (maxLen - len(text)) / 2
+		text = fmt.Sprintf("%s%s%s", strings.Repeat(" ", padding), text, strings.Repeat(" ", maxLen-len(text)-padding))
 	}
 
-	infoText = "Press ESC to exit..."
-	infoX = 30
-	infoY = (len(cells)+1)*(offsetY+1) + 4
-	for _, rune := range infoText {
-		s.SetContent(infoX, infoY, rune, nil, infoStyle)
-		infoX++
+	for x, rune := range text {
+		s.SetContent(x, row, rune, nil, infoStyle)
 	}
 }
 
