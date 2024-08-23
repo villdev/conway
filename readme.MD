@@ -1,4 +1,4 @@
-### Conway's Game of Life
+## Conway's Game of Life
 Created in Go using [tcell](https://github.com/gdamore/tcell).
 
 ### Setup
