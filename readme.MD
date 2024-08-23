@@ -1,9 +1,23 @@
 # Conways Game of Life
 Created in Go using [tcell](https://github.com/gdamore/tcell).
 
-----
+## Setup
+Clone and open directory in terminal.
+```
+go run main.go
+```
 
-### Initial State
+## Demo
+https://github.com/user-attachments/assets/2279c989-14fc-40f5-b1c2-749e8846f40b
+
+### Controls
+1. Esc or Ctrl+c to exit.
+2. Spacebar - play/pause.
+3. Left/right arrow - change pattern.
+4. G - show/hide grid.
+5. R - reset state
+
+### Patterns
 1. Random
 2. Block
 3. Beehive
@@ -13,23 +27,4 @@ Created in Go using [tcell](https://github.com/gdamore/tcell).
 7. Spaceship
 8. Spaceship2
 9. Diehard
-10.Acorn
-
-### Rules
-1. Live cell with 2 or 3 live neighbours - survives.
-2. Dead cell with 3 live neighbours - revives.
-3. All other cells die.
-
-
-### Controls
-1. Esc or Ctrl+c to exit.
-2. Spacebar - play/pause.
-3. Left/right arrow - change pattern.
-4. G - show/hide grid.
-5. R - reset state
-
-### WIP
-1. Effecient re-render.
-2. Bigger grid sizes.
-
-----
+10. Acorn

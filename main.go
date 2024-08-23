@@ -130,7 +130,7 @@ func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, s
 func renderCellGrid(cells Cells, s tcell.Screen, showGrid bool, previousShowGrid bool, startX int, startY int) int {
 	liveCount := 0
 	blockStyle := tcell.StyleDefault.Background(tcell.ColorLime).Foreground(tcell.ColorGreenYellow)
-	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.NewRGBColor(57, 60, 64))
+	gridStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.NewRGBColor(90, 95, 100))
 	emptyStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 
 	for i := 0; i <= len(cells); i++ {
