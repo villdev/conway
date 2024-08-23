@@ -10,7 +10,12 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-type Cells = [20][40]bool
+type Cell struct {
+	alive   bool
+	updated bool
+}
+
+type Cells = [20][40]Cell
 
 type State string
 
@@ -55,14 +60,14 @@ func main() {
 	frameDelay := 100 * time.Millisecond
 	idleFrameDelay := 200 * time.Millisecond
 
+	screen.Clear()
 	renderUI(screen, cells, currentState, generation, showGrid, patterns[patternIndex])
 
 	for {
 		switch currentState {
 		case Start:
 			time.Sleep(idleFrameDelay)
-			var defaultCells Cells
-			cells = defaultCells
+			cells = newCells()
 		case Running:
 			time.Sleep(frameDelay)
 			if generation == 0 {
@@ -102,8 +107,6 @@ func newGameScreen() tcell.Screen {
 }
 
 func renderUI(s tcell.Screen, cells Cells, currentState State, generation int, showGrid bool, pattern string) {
-	s.Clear()
-
 	offsetX, offsetY := 1, 1
 
 	liveCount := renderCellGrid(cells, offsetX, offsetY, s, showGrid)
@@ -122,11 +125,13 @@ func renderCellGrid(cells Cells, offsetX, offsetY int, s tcell.Screen, showGrid 
 			x, y := j*(offsetX+1), i*(offsetY+1)
 
 			if i < len(cells) && j < len(cells[0]) {
-				if cells[i][j] {
-					liveCount++
-					s.SetContent(x, y, '█', nil, blockStyle)
-				} else {
-					s.SetContent(x, y, ' ', nil, gridStyle)
+				if cells[i][j].updated {
+					if cells[i][j].alive {
+						liveCount++
+						s.SetContent(x, y, '█', nil, blockStyle)
+					} else {
+						s.SetContent(x, y, ' ', nil, gridStyle)
+					}
 				}
 			}
 
@@ -238,80 +243,90 @@ func handleKeyInputs(s tcell.Screen, currentState *State, showGrid *bool, genera
 	}
 }
 
+func newCells() Cells {
+	var defaultCells Cells
+	for i := 0; i < len(defaultCells); i++ {
+		for j := 0; j < len(defaultCells[i]); j++ {
+			defaultCells[i][j].updated = true
+		}
+	}
+	return defaultCells
+}
+
 func initCells(patternIndex int) Cells {
 	var cells Cells
 	switch patternIndex {
 	case Block:
-		cells[1][1] = true
-		cells[1][2] = true
-		cells[2][1] = true
-		cells[2][2] = true
+		cells[1][1] = Cell{alive: true, updated: true}
+		cells[1][2] = Cell{alive: true, updated: true}
+		cells[2][1] = Cell{alive: true, updated: true}
+		cells[2][2] = Cell{alive: true, updated: true}
 	case Beehive:
-		cells[1][2] = true
-		cells[1][3] = true
-		cells[2][1] = true
-		cells[2][4] = true
-		cells[3][2] = true
-		cells[3][3] = true
+		cells[1][2] = Cell{alive: true, updated: true}
+		cells[1][3] = Cell{alive: true, updated: true}
+		cells[2][1] = Cell{alive: true, updated: true}
+		cells[2][4] = Cell{alive: true, updated: true}
+		cells[3][2] = Cell{alive: true, updated: true}
+		cells[3][3] = Cell{alive: true, updated: true}
 	case Blinker:
-		cells[10][20] = true
-		cells[10][21] = true
-		cells[10][22] = true
+		cells[10][20] = Cell{alive: true, updated: true}
+		cells[10][21] = Cell{alive: true, updated: true}
+		cells[10][22] = Cell{alive: true, updated: true}
 	case Toad:
-		cells[10][20] = true
-		cells[10][21] = true
-		cells[10][22] = true
-		cells[11][19] = true
-		cells[11][20] = true
-		cells[11][21] = true
+		cells[10][20] = Cell{alive: true, updated: true}
+		cells[10][21] = Cell{alive: true, updated: true}
+		cells[10][22] = Cell{alive: true, updated: true}
+		cells[11][19] = Cell{alive: true, updated: true}
+		cells[11][20] = Cell{alive: true, updated: true}
+		cells[11][21] = Cell{alive: true, updated: true}
 	case Glider:
-		cells[1][2] = true
-		cells[2][3] = true
-		cells[3][1] = true
-		cells[3][2] = true
-		cells[3][3] = true
+		cells[1][2] = Cell{alive: true, updated: true}
+		cells[2][3] = Cell{alive: true, updated: true}
+		cells[3][1] = Cell{alive: true, updated: true}
+		cells[3][2] = Cell{alive: true, updated: true}
+		cells[3][3] = Cell{alive: true, updated: true}
 	case Spaceship:
-		cells[1][2] = true
-		cells[1][3] = true
-		cells[1][4] = true
-		cells[1][5] = true
-		cells[2][1] = true
-		cells[2][5] = true
-		cells[3][5] = true
-		cells[4][1] = true
-		cells[4][4] = true
+		cells[1][2] = Cell{alive: true, updated: true}
+		cells[1][3] = Cell{alive: true, updated: true}
+		cells[1][4] = Cell{alive: true, updated: true}
+		cells[1][5] = Cell{alive: true, updated: true}
+		cells[2][1] = Cell{alive: true, updated: true}
+		cells[2][5] = Cell{alive: true, updated: true}
+		cells[3][5] = Cell{alive: true, updated: true}
+		cells[4][1] = Cell{alive: true, updated: true}
+		cells[4][4] = Cell{alive: true, updated: true}
 	case Spaceship2:
-		cells[10][1] = true
-		cells[10][2] = true
-		cells[10][3] = true
-		cells[10][4] = true
-		cells[10][5] = true
-		cells[11][0] = true
-		cells[11][5] = true
-		cells[12][5] = true
-		cells[13][4] = true
-		cells[13][0] = true
+		cells[10][1] = Cell{alive: true, updated: true}
+		cells[10][2] = Cell{alive: true, updated: true}
+		cells[10][3] = Cell{alive: true, updated: true}
+		cells[10][4] = Cell{alive: true, updated: true}
+		cells[10][5] = Cell{alive: true, updated: true}
+		cells[11][0] = Cell{alive: true, updated: true}
+		cells[11][5] = Cell{alive: true, updated: true}
+		cells[12][5] = Cell{alive: true, updated: true}
+		cells[13][4] = Cell{alive: true, updated: true}
+		cells[13][0] = Cell{alive: true, updated: true}
 	case Diehard:
-		cells[10][25] = true
-		cells[11][19] = true
-		cells[11][20] = true
-		cells[12][20] = true
-		cells[12][24] = true
-		cells[12][25] = true
-		cells[12][26] = true
+		cells[10][25] = Cell{alive: true, updated: true}
+		cells[11][19] = Cell{alive: true, updated: true}
+		cells[11][20] = Cell{alive: true, updated: true}
+		cells[12][20] = Cell{alive: true, updated: true}
+		cells[12][24] = Cell{alive: true, updated: true}
+		cells[12][25] = Cell{alive: true, updated: true}
+		cells[12][26] = Cell{alive: true, updated: true}
 	case Acorn:
-		cells[10][20] = true
-		cells[11][22] = true
-		cells[12][19] = true
-		cells[12][20] = true
-		cells[12][23] = true
-		cells[12][24] = true
-		cells[12][25] = true
+		cells[10][20] = Cell{alive: true, updated: true}
+		cells[11][22] = Cell{alive: true, updated: true}
+		cells[12][19] = Cell{alive: true, updated: true}
+		cells[12][20] = Cell{alive: true, updated: true}
+		cells[12][23] = Cell{alive: true, updated: true}
+		cells[12][24] = Cell{alive: true, updated: true}
+		cells[12][25] = Cell{alive: true, updated: true}
 	default:
 		for i := 0; i < len(cells); i++ {
 			for j := 0; j < len(cells[i]); j++ {
 				if rand.Intn(10) == 0 {
-					cells[i][j] = true
+					cells[i][j] = Cell{alive: true, updated: true}
 				}
 			}
 		}
@@ -325,13 +340,17 @@ func getNextGeneration(cells Cells) Cells {
 	for i := 0; i < len(cells); i++ {
 		for j := 0; j < len(cells[i]); j++ {
 			neighbourCount := countNeighbours(i, j, cells)
-			alive := cells[i][j]
+			alive := cells[i][j].alive
 			if alive && (neighbourCount == 2 || neighbourCount == 3) {
-				newCells[i][j] = true
+				newCells[i][j] = Cell{alive: true, updated: false}
 			} else if !alive && neighbourCount == 3 {
-				newCells[i][j] = true
+				newCells[i][j] = Cell{alive: true, updated: true}
 			} else {
-				newCells[i][j] = false
+				if alive {
+					newCells[i][j] = Cell{alive: false, updated: true}
+				} else {
+					newCells[i][j] = Cell{alive: false, updated: false}
+				}
 			}
 		}
 	}
@@ -343,7 +362,7 @@ func countNeighbours(currentRow, currentCol int, cells Cells) int {
 	for i := bigger(0, currentRow-1); i <= smaller(currentRow+1, len(cells)-1); i++ {
 		for j := bigger(0, currentCol-1); j <= smaller(currentCol+1, len(cells[i])-1); j++ {
 			isMainCell := i == currentRow && j == currentCol
-			if cells[i][j] && !isMainCell {
+			if cells[i][j].alive && !isMainCell {
 				count++
 			}
 		}
