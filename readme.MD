@@ -1,13 +1,13 @@
-# Conways Game of Life
+### Conway's Game of Life
 Created in Go using [tcell](https://github.com/gdamore/tcell).
 
-## Setup
+### Setup
 Clone and open directory in terminal.
 ```
 go run main.go
 ```
 
-## Demo
+### Demo
 https://github.com/user-attachments/assets/2279c989-14fc-40f5-b1c2-749e8846f40b
 
 ### Controls
